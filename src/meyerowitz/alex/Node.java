@@ -5,6 +5,7 @@ public class Node
 	private int mDegree;
 	public int getDegree() {return mDegree;}
 	public void addDegree() {mDegree+=1;}
+	public void subtractDegree() {mDegree-=1;}
 	
 	private int mX;
 	public int getX() { return mX; }

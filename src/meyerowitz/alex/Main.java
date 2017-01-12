@@ -3,27 +3,54 @@ package meyerowitz.alex;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JTextPane;
 import javax.swing.WindowConstants;
 
 public class Main extends JPanel {
 	private static final long serialVersionUID = 1L;
 
-	private int numNodes = 10;
+	private int numNodes = 8;
 	private Node[] mNodes;
 	private ArrayList<Node[]> paths;
 	private Node[] optimalPath;
 	private ArrayList<Node> nearestNeighborPath;
 	private ArrayList<Edge> mEdges;
 	private ArrayList<Edge> greedyPath;
+	private JButton button;
+	private JTextPane text;
+	private int index;
 	
 	public Main() {
+		index = 0;
+		
+		button = new JButton("switch heuristic");
+		button.setVisible(true);
+		button.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				index = (index + 1)%3;
+				updateText();
+			}
+		});
+		
+		text = new JTextPane();
+		text.setEditable(false);
+		updateText();
+		
+		this.add(button);
+		this.add(text);
+		
 		mNodes = new Node[numNodes];
 		mEdges = new ArrayList<Edge>();
 		
@@ -35,8 +62,8 @@ public class Main extends JPanel {
 				if(a.getId() != b.getId()) {
 					boolean c = false;
 					for(Edge edge: mEdges) {
-						if(edge.getNode1().getId() == b.getId() && 
-								edge.getNode2().getId() == a.getId()) {
+						if(edge.getA().getId() == b.getId() && 
+								edge.getB().getId() == a.getId()) {
 							c = true;
 						}
 					}	
@@ -46,7 +73,7 @@ public class Main extends JPanel {
 				}
 			}
 		}
-		
+	
 		optimalSolution(mNodes);
 		nearestNeighborHeuristic(mNodes);
 		greedyHeuristic(mNodes, mEdges);
@@ -59,12 +86,10 @@ public class Main extends JPanel {
 		};
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 		executor.scheduleAtFixedRate(runnable, 0, 33, TimeUnit.MILLISECONDS);
-		
-		greedyHeuristic(mNodes, mEdges);
 	}
 	
 	private void optimalSolution(Node[] nodes) {
-		long startTime = System.currentTimeMillis();
+		long start_time = System.currentTimeMillis();
 		int shortestPath = Integer.MAX_VALUE;
 		paths = new ArrayList<Node[]>();
 		
@@ -80,21 +105,27 @@ public class Main extends JPanel {
 			if(length < shortestPath) {
 				shortestPath = length;
 				optimalPath = a;
-			
 			}
 		}
-	
-		long endTime = System.currentTimeMillis();
 		
-		System.out.println("Optimal Solution Length: " + shortestPath);
-		System.out.println("Optimal Solution Compute Time: " + (endTime - startTime));
+		long end_time = System.currentTimeMillis();
+		
+		System.out.println("\nOptimal:");
+		System.out.println((end_time - start_time) + "ms");
+		System.out.println(shortestPath + "u");
 	}
 	
 	private void permute(Node[] a, int k) {
-        if (k == a.length){
-            for (int i = 0; i < a.length; i++) {
-                paths.add(a);
-            }
+        if (k == a.length) {
+        	Node[] b = new Node[k+1];
+        	for(int i = 0; i < k+1; i++) {
+        		if(i != k) {
+        			b[i] = a[i];
+        		} else {
+        			b[i] = b[0];
+        		}
+        	}
+            paths.add(b);
         } else {
             for (int i = k; i < a.length; i++) {
                 Node temp = a[k];
@@ -111,7 +142,7 @@ public class Main extends JPanel {
     }
 	
 	private void nearestNeighborHeuristic(Node[] nodes) {
-		long startTime = System.currentTimeMillis();
+		long start_time = System.currentTimeMillis();
 		
 		ArrayList<Node> path = new ArrayList<Node>();
 		int length = 0;
@@ -134,80 +165,107 @@ public class Main extends JPanel {
 			path.add(next);
 		}
 		
+		path.add(path.get(0));
+		
 		nearestNeighborPath = path;
+		long end_time = System.currentTimeMillis();	
 		
 		for(int i = 0; i < path.size() - 1; i++) {
 			length += (int)calculateDistance(path.get(i), path.get(i+1));
 		}
-		long endTime = System.currentTimeMillis();			
-		System.out.println("Nearest Neighbor Solution Length: " + length);
-		System.out.println("Nearest Neighbor Solution Compute Time: " + (endTime - startTime));
+				
+		System.out.println("\nNearest Neighbor:");
+		System.out.println((end_time - start_time) + "ms");
+		System.out.println(length + "u");
 	}
 	
 	private void greedyHeuristic(Node[] nodes, ArrayList<Edge> edges) {
-		long startTime = System.currentTimeMillis();
+		long start_time = System.currentTimeMillis();
 		ArrayList<Edge> path = new ArrayList<Edge>();
-		ArrayList<Node> nodeSequence = new ArrayList<Node>();
 		Collections.sort(edges);
-
-		for(Edge edge: edges) {
-			int a = 0;
-			int b = 0;
+		
+		a:for(Edge edge : edges) {
+			path.add(edge);
+			edge.getA().addDegree();
+			edge.getB().addDegree();
 			
-			for(int i = 0; i < nodes.length; i++) {
-				if(edge.getNode1().getId() == nodes[i].getId()) {
-					a = i;
-				}
-				if(edge.getNode2().getId() == nodes[i].getId()) {
-					b = i;
+			for(Edge a : path) {
+				if(a.getA().getDegree() > 2 || a.getB().getDegree() > 2) {
+					path.remove(edge);
+					edge.getA().subtractDegree();
+					edge.getB().subtractDegree();
+					continue a;
 				}
 			}
 			
-			if(nodes[a].getDegree() < 2 && nodes[b].getDegree() < 2) {
-				nodeSequence.add(nodes[b]);
-				
-				boolean cycle = false;
-				
-				loop: for(int i = 0; i < numNodes; i++) {
-					int d = 0;
-					for(Node node: nodeSequence) {
-						if(node.getId() == i) {
-							d++;
+			if(path.size() > 2) {
+				b:for(Node node : nodes) {
+					Edge current = null;
+					Node a = node;
+					int n = 0;
+					if(a.getDegree() < 2) continue;
+					
+					while(true) {
+						for(Edge e : path) {
+							if(e.getA().getId() == a.getId() || e.getB().getId() == a.getId()) {
+								if(current == null || e.getId() != current.getId()) {
+									current = e;
+									n++;
+									break;
+								}
+							}
 						}
 						
-						if(d == 2) {
-							cycle = true;
-							nodeSequence.remove(nodeSequence.size() - 1);
-							break loop;
+						a = current.getA().getId() == a.getId() ? current.getB(): current.getA(); // Node 'a' becomes the second node in the current edge
+						
+						if(a.getDegree() < 2) {
+							break;
+						}
+						
+						if(a.getId() == node.getId() && n < numNodes) {
+							path.remove(edge);
+							edge.getA().subtractDegree();
+							edge.getB().subtractDegree();
+							break b;
+						} else if(a.getId() == node.getId() && n == numNodes) {
+							break a;
 						}
 					}
 				}
-				
-				if(!cycle) {
-					path.add(edge);
-					nodes[a].addDegree();
-					nodes[b].addDegree();
-					greedyPath = path;
-				}
-			}	
+			}
 		}
 		
-		int length = 0;
-		
-		for(int i = 0; i < path.size() - 1; i++) {
-			length += path.get(i).getWeight();
-		}
 		
 		greedyPath = path;
+		long end_time = System.currentTimeMillis();
 		
-		long endTime = System.currentTimeMillis();
-		System.out.println("Greedy Solution Length: " + length);
-		System.out.println("Greedy Solution Compute Time: " + (endTime - startTime));
+		int length = 0;
+		for(Edge edge : path) {
+			length += edge.getWeight();
+		}
+
+		System.out.println("\nGreedy:");
+		System.out.println((end_time - start_time) + "ms");
+		System.out.println(length + "u");
 	}
 	
 	private double calculateDistance(Node a, Node b) {	
 		return Math.sqrt( (a.getX() - b.getX()) * (a.getX() - b.getX()) 
 				+ (a.getY() - b.getY()) * (a.getY() - b.getY()) );
+	}
+	
+	private void updateText() {
+		switch(index) {
+			case 0:
+				text.setText("Optimal");
+				break;
+			case 1:
+				text.setText("Nearest Neighbor");
+				break;
+			case 2:
+				text.setText("Greedy");
+				break;
+		}
 	}
 	
 	@Override
@@ -222,22 +280,28 @@ public class Main extends JPanel {
 		for(Node node: mNodes)
 			g2d.fillOval(node.getX(), node.getY(), 10, 10);
 		
-		/*g2d.setColor(Color.BLUE);
-		for(int i = 0; i < optimalPath.length - 1; i++) {
-			g2d.drawLine(optimalPath[i].getX(), optimalPath[i].getY(),
-					optimalPath[i+1].getX(), optimalPath[i+1].getY());
-		}
-		
-		g2d.setColor(Color.RED);
-		for(int i = 0; i < nearestNeighborPath.size() - 1; i++) {
-			g2d.drawLine(nearestNeighborPath.get(i).getX(), nearestNeighborPath.get(i).getY(),
-					nearestNeighborPath.get(i+1).getX(), nearestNeighborPath.get(i+1).getY());
-		}*/
-		
-		g2d.setColor(Color.BLACK);
-		for(int i = 0; i < greedyPath.size(); i++) {
-			g2d.drawLine(greedyPath.get(i).getNode1().getX(), greedyPath.get(i).getNode1().getY(), 
-					greedyPath.get(i).getNode2().getX(), greedyPath.get(i).getNode2().getY());	
+		switch(index) {
+			case 0:
+				g2d.setColor(Color.BLUE);
+				for(int i = 0; i < optimalPath.length - 1; i++) {
+					g2d.drawLine(optimalPath[i].getX(), optimalPath[i].getY(),
+							optimalPath[i+1].getX(), optimalPath[i+1].getY());
+				}
+				break;
+			case 1:
+				g2d.setColor(Color.RED);
+				for(int i = 0; i < nearestNeighborPath.size() - 1; i++) {
+					g2d.drawLine(nearestNeighborPath.get(i).getX(), nearestNeighborPath.get(i).getY(),
+							nearestNeighborPath.get(i+1).getX(), nearestNeighborPath.get(i+1).getY());
+				}
+				break;
+			case 2:
+				g2d.setColor(Color.BLACK);
+				for(int i = 0; i < greedyPath.size(); i++) {
+					g2d.drawLine(greedyPath.get(i).getA().getX(), greedyPath.get(i).getA().getY(), 
+							greedyPath.get(i).getB().getX(), greedyPath.get(i).getB().getY());	
+				}
+				break;
 		}
 	}
 	

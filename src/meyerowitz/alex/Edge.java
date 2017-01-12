@@ -2,19 +2,23 @@ package meyerowitz.alex;
 
 public class Edge implements Comparable<Edge>
 {
-	private Node mNodeA;
-	public Node getNode1() { return mNodeA; }
+	private Node a;
+	public Node getA() { return a; }
 	
-	private Node mNodeB;
-	public Node getNode2() { return mNodeB; }
+	private Node b;
+	public Node getB() { return b; }
 	
-	private double mWeight;
-	public double getWeight() { return mWeight; }
+	private double weight;
+	public double getWeight() { return weight; }
 	
-	public Edge(Node nodeA, Node nodeB) {
-		mNodeA = nodeA;
-		mNodeB = nodeB;
-		mWeight = calculateWeight(mNodeA, mNodeB);
+	private double id;
+	public double getId() { return id;}
+	
+	public Edge(Node a, Node b) {
+		this.a = a;
+		this.b = b;
+		weight = calculateWeight(a, b);
+		id = Math.random();
 	}
 	
 	private double calculateWeight(Node a, Node b) {	
